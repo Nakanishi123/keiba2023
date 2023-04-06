@@ -4,7 +4,6 @@ from sqlalchemy.orm import sessionmaker
 from parser.dataclass import *
 from parser.db_horse_parser import *
 from tqdm import tqdm
-import time
 import random
 
 
@@ -19,6 +18,14 @@ if __name__ == "__main__":
     todo = list(do - done)
     todo = random.sample(todo, len(todo))
 
+    # # 出走馬にhorse_idが1984000000以下の馬がふくまれるRaceをすべて取得
+    # no_need = session.query(Race).filter(Race.horse_id < 1984000000).all()
+    # no_need_id = tuple(set([i._id for i in no_need]))
+    # race_del = session.query(Race).filter(Race._id.in_(no_need_id)).delete()
+    # raceI_del = (
+    #     session.query(RaceInfo).filter(RaceInfo._id.in_(no_need_id)).delete()
+    # )
+    # session.commit()
     for i in tqdm(todo):
         if i < 1984000000:  # 1984年より前の馬は列がそれ以降と違うのでスキップ
             tqdm.write(str(i))
