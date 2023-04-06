@@ -185,7 +185,9 @@ class Race(Base):
             0
         ]
         self.banushi = tds[19].text.strip()
-        self.banushi_id = re.findall(r"\d+", tds[19].find("a").get("href"))[0]
+        banushi_id_a = tds[19].find("a")
+        if banushi_id_a is not None:  # たまにIDのない馬主がいる
+            self.banushi_id = re.findall(r"\d+", banushi_id_a.get("href"))[0]
         self.shokin = to_float(tds[20].text)
 
     def parse_tsuka(self, tsuka: str) -> None:
@@ -423,3 +425,166 @@ class ShortComment(Base):
         self.name = th.get_text(strip=True).split(":")[1]
         self.comment = td.get_text(strip=True)
         return self
+
+
+class HorsePed(Base):
+    __tablename__ = "horse_ped"
+    _id = Column(String(15), primary_key=True)
+    father = Column(String(15))  # 父
+    mother = Column(String(15))  # 母
+
+    def from_table_ichiran(self, table: bs4.element.ResultSet) -> None:
+        """
+        馬のTOPページから父母のIDを取得する
+        血統のページでないので注意
+
+        Args:
+            table (bs4.element.ResultSet): 馬のTOPページの血統表
+        """
+        ids = [td.find("a").get("href") for td in table.find_all("td")]
+        self.father = ids[0].replace("/horse/ped/", "").replace("/", "")
+        self.mother = ids[3].replace("/horse/ped/", "").replace("/", "")
+
+    def set_id(self, id: int) -> None:
+        self._id = id
+
+
+class HorseResult(Base):
+    __tablename__ = "horse_result"
+
+    _id = Column(Integer, primary_key=True)
+    race_id = Column(String(10), primary_key=True)
+    kishu_id = Column(String(10))
+
+    date = Column(Date)
+    place = Column(Text)
+    weather = Column(String(2))
+    R = Column(Integer)
+    name = Column(Text)
+    movie_link = Column(Text)
+    num = Column(Integer)  # 頭数
+    wakuban = Column(Integer)  # 枠番
+    umaban = Column(Integer)  # 馬番
+    odds = Column(Float)  # 単勝オッズ
+    ninki = Column(Integer)  # 人気
+    chakujun = Column(Integer)  # 着順
+    kishu_name = Column(String(30))  # 騎手
+    kinryo = Column(Integer)  # 斤量
+    track = Column(String(1))  # 芝/ダート/障害
+    distance = Column(Integer)  # 距離
+    firm = Column(String(1))  # 良/稍重/重/不良
+    truck_index = Column(Integer)  # 馬場指数
+    time = Column(Float)  # タイム
+    chakusa = Column(String(10))  # 着差
+    time_index = Column(Integer)  # タイム指数
+    tsuka_1 = Column(Integer)
+    tsuka_2 = Column(Integer)
+    tsuka_3 = Column(Integer)
+    tsuka_4 = Column(Integer)
+    pace = Column(String(25))  # ペース
+    nobori = Column(Float)  # 上り
+    bataiju = Column(Integer)  # 馬体重(左)
+    zougen = Column(Integer)  # 馬体重(右)
+    umaya_comment = Column(Text)  # 厩舎コメント
+    bikou = Column(String(30))  # 備考
+    winner = Column(String(30))  # 勝ち馬
+    shokin = Column(Float)  # 賞金
+
+    def from_tr(self, tr: bs4.element.ResultSet) -> None:
+        tds = tr.find_all("td")
+
+        self.date = datetime.date.fromisoformat(
+            tds[0].get_text(strip=True).replace("/", "-")
+        )
+        self.place = re.sub(r"\d", "", tds[1].get_text(strip=True))
+        self.weather = tds[2].get_text(strip=True)
+        self.R = tds[3].get_text(strip=True)
+        self.name = tds[4].get_text(strip=True)
+        self.race_id = (
+            tds[4].find("a").get("href").replace("race", "").replace("/", "")
+        )
+        self.movie_link = (tds[5].find("a") or tds[5]).get(
+            "href", None
+        )  # 動画がない場合はNone
+        self.num = tds[6].get_text(strip=True)
+        self.wakuban = tds[7].get_text(strip=True)
+        self.umaban = tds[8].get_text(strip=True)
+        self.odds = to_float(tds[9].get_text(strip=True))
+        self.ninki = (
+            tds[10].get_text(strip=True)
+            if tds[10].get_text(strip=True).isdecimal()
+            else None
+        )
+        chakujun_num = re.findall(r"\d+", tds[11].get_text(strip=True))
+        if chakujun_num == []:
+            self.chakujun = None
+        else:
+            self.chakujun = int(chakujun_num[0])
+        self.kishu_name = tds[12].get_text(strip=True)
+        kishu_id = tds[12].find("a")
+        if kishu_id is not None:
+            self.kishu_id = tds[12].find("a").get("href").split("/")[-2]
+        self.kinryo = tds[13].get_text(strip=True)
+        track_and_distance = tds[14].get_text(strip=True)
+        track = re.findall(r"[芝ダ障]", track_and_distance)
+        distance = re.findall(r"\d+", track_and_distance)
+        if track != []:
+            self.track = track[0]
+        else:
+            pass
+        if distance != []:
+            self.distance = int(distance[0])
+        else:
+            pass
+        self.firm = tds[15].get_text(strip=True)
+        self.truck_index = tds[16].get_text(strip=True)
+        self.time = parse_time(tds[17].get_text(strip=True))
+        self.chakusa = (
+            tds[18].get_text(strip=True)
+            if tds[18].get_text(strip=True)
+            else None
+        )
+        self.time_index = (
+            int(tds[19].get_text(strip=True))
+            if tds[19].get_text(strip=True)
+            else None
+        )
+        self.parse_tsuka(tds[20].get_text(strip=True))
+        self.pace = tds[21].get_text(strip=True)
+        self.nobori = to_float(tds[22].get_text(strip=True))
+        self.parse_taiju(tds[23].get_text(strip=True))
+        self.umaya_comment = (tds[24].find("a") or tds[24]).get("href", None)
+        self.bikou = tds[25].get_text(strip=True)
+        self.winner = tds[26].get_text(strip=True)
+        self.shokin = to_float(tds[27].get_text(strip=True))
+
+    def parse_tsuka(self, tsuka: str) -> None:
+
+        if len(tsuka) == 0:  # 空白の時
+            return
+        tsukas = tsuka.split("-")
+        if len(tsukas) == 0:
+            return
+        if len(tsukas) >= 1:
+            self.tsuka_1 = int(tsukas[0])
+        if len(tsukas) >= 2:
+            self.tsuka_2 = int(tsukas[1])
+        if len(tsukas) >= 3:
+            self.tsuka_3 = int(tsukas[2])
+        if len(tsukas) >= 4:
+            self.tsuka_4 = int(tsukas[3])
+
+    def parse_taiju(self, taiju: str) -> None:
+        if taiju:
+            taiju = taiju.split("(")
+            try:
+                self.bataiju = int(taiju[0])
+            except:
+                pass
+            try:
+                self.zougen = int(taiju[1][:-1])
+            except:
+                pass
+
+    def set_id(self, id: int) -> None:
+        self._id = id

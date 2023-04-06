@@ -30,7 +30,7 @@ if __name__ == "__main__":
     done = session.query(RaceInfo).all()
     done_id = [i._id for i in done]
 
-    for i in range(141, 1212):
+    for i in range(676, 1212):
         driver.get(url + str(i))
         driver.implicitly_wait(10)
         original_window = driver.current_window_handle
