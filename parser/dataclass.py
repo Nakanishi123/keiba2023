@@ -191,7 +191,6 @@ class Race(Base):
         self.shokin = to_float(tds[20].text)
 
     def parse_tsuka(self, tsuka: str) -> None:
-
         if len(tsuka) == 0:  # 空白の時
             return
         tsukas = tsuka.split("-")
@@ -325,11 +324,11 @@ class Odds(Base):
 
 
 class TruckInfo(Base):
-    __tablename__ = "truck_info"
+    __tablename__ = "track_info"
 
     _id = Column(Integer, primary_key=True)
-    truck_index = Column(Integer)  # 馬場指数
-    truck_comment = Column(Text)  # 馬場コメント
+    track_index = Column(Integer)  # 馬場指数
+    track_comment = Column(Text)  # 馬場コメント
 
     def __init__(self, _id: int, table: bs4.element.ResultSet):
         tds = table.find_all("td")
@@ -337,9 +336,9 @@ class TruckInfo(Base):
             return
 
         self._id = _id
-        self.truck_index = re.findall(r"^-*\d+", tds[0].text)[0]
+        self.track_index = re.findall(r"^-*\d+", tds[0].text)[0]
         if len(tds) >= 2:
-            self.truck_comment = tds[1].get_text(strip=True)
+            self.track_comment = tds[1].get_text(strip=True)
 
 
 class CornerInfo(Base):
@@ -559,7 +558,6 @@ class HorseResult(Base):
         self.shokin = to_float(tds[27].get_text(strip=True))
 
     def parse_tsuka(self, tsuka: str) -> None:
-
         if len(tsuka) == 0:  # 空白の時
             return
         tsukas = tsuka.split("-")
